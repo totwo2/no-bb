@@ -1,0 +1,12 @@
+{
+  "_说明": "collect_builtin.py 的运行映射表。runs 里每个元素 = 一个子代理样本：agent=子代理id（会话 subagents/ 目录下的 jsonl 文件名），suffix=C0_base(无约束基线) 或 C1_weak(中间层约束)，rep=重复序号。gold 与子代理回复中【答案1】~【答案N】一一对应。把本文件复制为 runs.json 后填入你自己的数据。",
+  "gold": ["1632.48", "15", "200", "3375", "19"],
+  "runs": [
+    { "agent": "YOUR-AGENT-ID-C0-REP1", "model_tag": "builtin-model", "suffix": "C0_base", "rep": 1 },
+    { "agent": "YOUR-AGENT-ID-C0-REP2", "model_tag": "builtin-model", "suffix": "C0_base", "rep": 2 },
+    { "agent": "YOUR-AGENT-ID-C0-REP3", "model_tag": "builtin-model", "suffix": "C0_base", "rep": 3 },
+    { "agent": "YOUR-AGENT-ID-C1-REP1", "model_tag": "builtin-model", "suffix": "C1_weak", "rep": 1 },
+    { "agent": "YOUR-AGENT-ID-C1-REP2", "model_tag": "builtin-model", "suffix": "C1_weak", "rep": 2 },
+    { "agent": "YOUR-AGENT-ID-C1-REP3", "model_tag": "builtin-model", "suffix": "C1_weak", "rep": 3 }
+  ]
+}

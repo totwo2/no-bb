@@ -1,0 +1,6 @@
+{
+ "step-3.7-flash": "https://api.stepfun.com/step_plan",
+ "agnes-2.5-flash": "https://apihub.agnes-ai.com",
+ "nvidia/nemotron-3-super-120b-a12b:free": "https://openrouter.ai/api",
+ "deepseek-v4-flash": "https://api.deepseek.com"
+}

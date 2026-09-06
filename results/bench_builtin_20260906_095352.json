@@ -1,0 +1,200 @@
+[
+ {
+  "model": "hy3",
+  "suffix": "C0_base",
+  "effort": "E3_high",
+  "set": "long",
+  "reps": 3,
+  "n": 15,
+  "correct": 15,
+  "accuracy": 1.0,
+  "rchars_mean": 6112.3,
+  "rtoks_mean": 2942.3,
+  "fn_call_total": 0,
+  "rows": [
+   {
+    "agent": "agent-3fa89798",
+    "model": "hy3",
+    "suffix": "C0_base",
+    "rep": 1,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 6275,
+    "rtoks": 2865,
+    "in_toks": 30278,
+    "out_toks": 4486,
+    "nfc": 0,
+    "wall": 36.643
+   },
+   {
+    "agent": "agent-55fbb36f",
+    "model": "hy3",
+    "suffix": "C0_base",
+    "rep": 2,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 5295,
+    "rtoks": 2564,
+    "in_toks": 30278,
+    "out_toks": 3963,
+    "nfc": 0,
+    "wall": 48.468
+   },
+   {
+    "agent": "agent-39bcfe39",
+    "model": "hy3",
+    "suffix": "C0_base",
+    "rep": 3,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 6767,
+    "rtoks": 3398,
+    "in_toks": 30278,
+    "out_toks": 4036,
+    "nfc": 0,
+    "wall": 39.664
+   }
+  ]
+ },
+ {
+  "model": "hy3",
+  "suffix": "C1_weak",
+  "effort": "E3_high",
+  "set": "long",
+  "reps": 3,
+  "n": 15,
+  "correct": 15,
+  "accuracy": 1.0,
+  "rchars_mean": 4061.0,
+  "rtoks_mean": 1954.7,
+  "fn_call_total": 0,
+  "rows": [
+   {
+    "agent": "agent-89007182",
+    "model": "hy3",
+    "suffix": "C1_weak",
+    "rep": 1,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 3552,
+    "rtoks": 1775,
+    "in_toks": 30317,
+    "out_toks": 1810,
+    "nfc": 0,
+    "wall": 22.724
+   },
+   {
+    "agent": "agent-68337f31",
+    "model": "hy3",
+    "suffix": "C1_weak",
+    "rep": 2,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 4925,
+    "rtoks": 2375,
+    "in_toks": 30317,
+    "out_toks": 2410,
+    "nfc": 0,
+    "wall": 15.118
+   },
+   {
+    "agent": "agent-49890e1e",
+    "model": "hy3",
+    "suffix": "C1_weak",
+    "rep": 3,
+    "correct": 5,
+    "n": 5,
+    "oks": [
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "got": [
+     "1632.48",
+     "15",
+     "200",
+     "3375",
+     "19"
+    ],
+    "rchars": 3706,
+    "rtoks": 1714,
+    "in_toks": 30317,
+    "out_toks": 2207,
+    "nfc": 0,
+    "wall": 16.32
+   }
+  ]
+ }
+]

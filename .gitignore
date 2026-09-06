@@ -1,0 +1,13 @@
+# 凭据与本地配置（绝不入库）
+models.json
+*.key
+.env
+
+# 运行产物
+__pycache__/
+*.pyc
+*.log
+reports/
+results/*_rejudged.json
+results/_summary_*.json
+runs.json
