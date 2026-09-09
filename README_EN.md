@@ -206,6 +206,8 @@ python3 scripts/wrap.py unwrap    # restore
 
 ## 7. Verify the savings (quantify it after installing)
 
+**Built-in free models (keys not on your machine — the pipe can't reach them)**: use the prompt-submission layer instead — `wrap.py converge` mounts a UserPromptSubmit hook that injects the convergence constraint into every WorkBuddy conversation, built-in models included. Edit `~/.workbuddy/hooks/nobb-converge.txt` to change the wording; touch `nobb-converge.off` to pause.
+
 **Option 1: one-command A/B script (recommended)**
 
 ```bash

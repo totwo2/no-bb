@@ -182,6 +182,8 @@ python3 scripts/wrap.py unwrap    # 一键还原
 
 ## 七、验证效果（装完想量化"到底省了多少"？）
 
+**内置免费模型（key 不在你手里、管道接不了）**：走提示词提交环节——`wrap.py converge` 挂一个 UserPromptSubmit hook，所有 WorkBuddy 对话（含内置模型）自动注入收敛约束。约束词 `~/.workbuddy/hooks/nobb-converge.txt` 可随时改，`nobb-converge.off` 文件即暂停。
+
 **方式一：一键 A/B 对照脚本（推荐）**
 
 ```bash
