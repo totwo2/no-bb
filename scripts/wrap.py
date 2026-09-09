@@ -12,7 +12,7 @@ unwrap: 用备份原样还原。
   python3 wrap.py unwrap
   python3 wrap.py status     # 查看当前接入状态
 """
-import json, os, shutil, socket, sys
+import json, os, shutil, socket, subprocess, sys, time
 
 MODELS = os.path.expanduser(os.environ.get('NOBB_MODELS_JSON', '~/.workbuddy/models.json'))
 BACKUP = MODELS + '.nobb-backup'
@@ -32,7 +32,15 @@ def proxy_alive():
 def load():
     if not os.path.exists(MODELS):
         sys.exit('未找到模型配置: %s' % MODELS)
-    return json.load(open(MODELS, encoding='utf-8'))
+    try:
+        data = json.load(open(MODELS, encoding='utf-8'))
+    except Exception as e:
+        sys.exit('模型配置解析失败(%s): %s。文件可能被平台改写，跑 python3 wrap.py check 看诊断。'
+                 % (MODELS, str(e)[:80]))
+    if not isinstance(data, list):
+        sys.exit('模型配置顶层是 %s(非模型列表): %s。文件可能被平台改写/迁移，跑 python3 wrap.py check 看诊断。'
+                 % (type(data).__name__, MODELS))
+    return data
 
 
 def save(data):
@@ -131,7 +139,151 @@ def status():
         print('   %-38s %s %s' % (m.get('id'), (m.get('url') or '')[:46], tag))
 
 
+def check():
+    """一键部署体检：分层自检 + 场景归位 + 到达验证引导（防空转）。
+    任何用户装完跑一次，就知道约束是否真的在生效。
+    """
+    issues = []
+    pipe_note = hook_note = ''
+    print('=== No BB 部署体检 ===')
+
+    # L0 中间层进程
+    l0 = proxy_alive()
+    print('[L0] 中间层进程(端口 %d): %s' % (PORT, '✅ 运行中' if l0 else '❌ 未运行'))
+    if not l0:
+        issues.append('中间层未运行 -> 外接模型流量不会经过 No BB。启动: install.sh 或后台运行 src/rewrite_proxy.py')
+
+    # L1 外接模型接入
+    n_proxy = n_total = 0
+    broken = ''
+    if os.path.exists(MODELS):
+        try:
+            data = json.load(open(MODELS, encoding='utf-8'))
+            if isinstance(data, list):
+                n_total = len(data)
+                n_proxy = sum(1 for m in data
+                              if isinstance(m, dict) and HOST in (m.get('url') or ''))
+            else:
+                broken = ('顶层是 %s(非模型列表)——文件可能被平台改写/迁移' % type(data).__name__)
+        except Exception as e:
+            broken = '解析失败: %s' % str(e)[:60]
+        if broken:
+            print('[L1] 外接模型接入: ❌ %s' % broken)
+            issues.append('%s。处理: 若平台已不再使用此文件，需在平台新配置路径下重新接入外接模型并 wrap；若文件本应可用，从备份还原: cp %s %s'
+                          % (broken, BACKUP, MODELS))
+    if broken:
+        pass
+    elif n_total:
+        ok1 = (n_proxy == n_total)
+        print('[L1] 外接模型指向中间层: %d/%d %s' % (n_proxy, n_total, '✅' if ok1 else '❌'))
+        if not ok1:
+            issues.append('有外接模型未指向中间层 -> 跑: python3 wrap.py wrap')
+        pipe_note = '外接模型走中间层(可量化验证)'
+    else:
+        print('[L1] 外接模型: 无（不涉及管道场景）')
+        hook_note = '本机主要靠收敛 hook(内置免费模型)'
+
+    # L2 hook 挂载
+    hook_py = os.path.join(USER_HOOK_DIR, HOOK_NAME)
+    hooked = os.path.exists(hook_py)
+    off = os.path.exists(os.path.join(USER_HOOK_DIR, 'nobb-converge.off'))
+    word = ''
+    try:
+        word = open(os.path.join(USER_HOOK_DIR, 'nobb-converge.txt'), encoding='utf-8').read().strip()
+    except Exception:
+        pass
+    in_settings = False
+    if os.path.exists(SETTINGS):
+        try:
+            ups = json.load(open(SETTINGS, encoding='utf-8')).get('hooks', {}).get('UserPromptSubmit', [])
+            in_settings = any(HOOK_NAME in h.get('command', '')
+                              for blk in ups for h in blk.get('hooks', []))
+        except Exception:
+            pass
+    l2 = hooked and in_settings and not off and bool(word)
+    l2_detail = []
+    if not hooked:
+        l2_detail.append('hook 文件缺失')
+    if not in_settings:
+        l2_detail.append('settings.json 未挂载')
+    if off:
+        l2_detail.append('暂停开关存在(nobb-converge.off)')
+    if not word:
+        l2_detail.append('约束词为空')
+    if l2:
+        print('[L2] 收敛 hook 挂载: ✅')
+        hook_note = hook_note or '内置模型走收敛 hook'
+    else:
+        print('[L2] 收敛 hook 挂载: ❌ (%s)' % ('; '.join(l2_detail) or '未知'))
+        issues.append('收敛 hook 未就绪 -> 跑: python3 wrap.py converge')
+
+    # L3 hook 干跑（hook 层自证：能输出合法注入）
+    l3 = None
+    if hooked:
+        try:
+            r = subprocess.run([PYBIN, hook_py], input='{"prompt":"体检干跑"}',
+                               capture_output=True, text=True, timeout=8)
+            out = json.loads(r.stdout or '{}')
+            ac = (out.get('hookSpecificOutput') or {}).get('additionalContext') or ''
+            l3 = bool(ac) and out.get('continue') is True
+            if not l3:
+                issues.append('hook 干跑未产出合法注入内容(exit=%s, stderr=%s)'
+                              % (r.returncode, (r.stderr or '')[:80]))
+        except Exception as e:
+            issues.append('hook 干跑异常: %s' % str(e)[:80])
+    print('[L3] hook 干跑输出注入: %s' % ('✅' if l3 else '❌ 未执行/失败'))
+
+    # L4 管道真实流量（最近 30 分钟）
+    log_paths = [os.environ.get('NOBB_LOG', ''),
+                 os.path.expanduser('~/tools/no-bb/data/rewrite_events.jsonl'),
+                 os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'rewrite_events.jsonl')]
+    l4 = None
+    log_used = ''
+    for lp in log_paths:
+        if lp and os.path.exists(lp):
+            try:
+                last = 0.0
+                for line in open(lp, encoding='utf-8'):
+                    try:
+                        last = max(last, float(json.loads(line).get('ts', 0)))
+                    except Exception:
+                        pass
+                if last > 0:
+                    fresh = (time.time() - last) < 1800
+                    l4 = fresh
+                    log_used = lp
+                    print('[L4] 管道真实流量(最近30分钟): %s (%s)'
+                          % ('✅ 有新记录' if fresh else '⚠️ 有日志但30分钟内无新记录', lp))
+                    break
+            except Exception:
+                pass
+    if l4 is None:
+        print('[L4] 管道真实流量: — 无日志(仅管道用户关心；hook 场景不适用)')
+
+    # 汇总
+    print('---')
+    if issues:
+        print('⚠️ 发现 %d 个问题:' % len(issues))
+        for i, it in enumerate(issues, 1):
+            print('  %d. %s' % (i, it))
+    else:
+        print('✅ 全部就绪：%s%s' % (pipe_note, ('；' + hook_note) if hook_note else ''))
+    print()
+    # L5 双验证引导：一次拿「到达确认 + 收敛效果」两个结果
+    print('【30秒双验证】确认约束真生效 + 看它帮你省了多少（二选一，按你的场景）:')
+    if n_proxy:
+        print('  A. 外接模型(管道)场景 —— 一键 A/B 量化，直接给压缩率:')
+        print('     python3 bench/verify_savings.py')
+        print('     输出: 同问题 直连 vs 走No BB 的思考量/回答耗时对比(实测参考: 思考字符-92%, 时长 13s→1.4s)')
+        print()
+    print('  B. 内置模型(hook)场景 —— 两句话 A/B:')
+    print('     ① 现在随便发一句测试问题(如“用一句话解释什么是复利”)，我会确认约束有没有到我这边')
+    print('        并记下这次回答的速度和篇幅作为“开”的基线')
+    print('     ② 我再关掉约束，你重发同一句；两次一对比，收敛省了多少直接可见')
+    print('  任一路径都会同时回答: 约束真生效了没？+ 实际省了多少？')
+
+
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'status'
-    {'wrap': wrap, 'unwrap': unwrap, 'status': status,
+    {'wrap': wrap, 'unwrap': unwrap, 'status': status, 'check': check,
      'converge': converge, 'unconverge': unconverge}.get(cmd, status)()
