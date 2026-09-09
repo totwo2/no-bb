@@ -167,9 +167,18 @@ python src/rewrite_proxy.py
 
 | 环境变量 | 作用 |
 |---|---|
+**一键接入（wrap/unwrap）**：把本机客户端的模型配置统一指向中间层，之后客户端里切任何模型，流量都走管道（模型无关，key 照旧透传，中间层零 key）：
+
+```bash
+python3 scripts/wrap.py wrap      # 接入（自动备份原配置）
+python3 scripts/wrap.py status    # 查看接入状态
+python3 scripts/wrap.py unwrap    # 一键还原
+```
+
 | `REWRITE_SUFFIX_FILE=<path>` | 从文件换约束词（如精确计算场景的弱化版） |
 | `REWRITE_ENABLED=0` | 纯透传不拼约束（A/B 对照） |
 | `PORT` | 改端口 |
+| `UPSTREAM_DEFAULT` | 路由表外模型的兜底上游（不设则表外模型回 502） |
 
 ## 七、验证效果（装完想量化"到底省了多少"？）
 

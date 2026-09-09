@@ -191,9 +191,18 @@ python src/rewrite_proxy.py
 
 | Environment variable | Purpose |
 |---|---|
+**One-command integration (wrap/unwrap)**: point all local client model configs at the middleware once — afterwards any model you pick in the client goes through the pipe (model-agnostic, keys pass through untouched, middleware holds zero keys):
+
+```bash
+python3 scripts/wrap.py wrap      # integrate (backs up original config)
+python3 scripts/wrap.py status    # integration status
+python3 scripts/wrap.py unwrap    # restore
+```
+
 | `REWRITE_SUFFIX_FILE=<path>` | Load constraint text from a file (e.g. weakened version for precise computation) |
 | `REWRITE_ENABLED=0` | Pure passthrough, no constraint appended (A/B control) |
 | `PORT` | Change port |
+| `UPSTREAM_DEFAULT` | Fallback upstream for models not in the routing table (unset = 502) |
 
 ## 7. Verify the savings (quantify it after installing)
 

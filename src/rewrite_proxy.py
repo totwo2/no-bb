@@ -71,6 +71,11 @@ def log_event(obj):
         pass
 
 
+def forward_path(prefix):
+    p = prefix.rstrip('/')
+    return p + '/chat/completions' if p.endswith('/v1') else p + '/v1/chat/completions'
+
+
 def _split_url(up):
     up = up.rstrip('/')
     if up.startswith('http://'):
@@ -149,11 +154,16 @@ class Handler(BaseHTTPRequestHandler):
         mid = model if isinstance(model, str) else '?'
         want_stream = bool(rb.get('stream'))
         base_id = mid[:-3] if mid.endswith('.il') else mid  # 兼容带 .il 后缀的模型别名
-        upstream_base = UPSTREAM_TABLE.get(base_id) or os.environ.get('UPSTREAM', '')
+        # 通用路由：表内按表；表外走 UPSTREAM_DEFAULT 兜底（客户端用哪个模型就转哪个模型，
+        # 中间层不挑模型）。两者都没有才 502。
+        upstream_base = (UPSTREAM_TABLE.get(base_id)
+                         or os.environ.get('UPSTREAM_DEFAULT', '')
+                         or os.environ.get('UPSTREAM', ''))
         if not upstream_base:
             log_event(dict(ts=time.time(), model=model, ok=False,
-                           reason='no_upstream_route', elapsed_ms=0))
-            self._reply_simple(502, b'no upstream route for model')
+                           reason='no_upstream_route', model_name=mid, elapsed_ms=0))
+            self._reply_simple(502, ('no route for model "%s"; set UPSTREAM_DEFAULT '
+                                     'for unknown models' % mid).encode('utf-8'))
             return
 
         new_body, rewrote, orig_len, new_len = rewrite_body(body) if ENABLED else (body, False, 0, 0)
@@ -177,7 +187,7 @@ class Handler(BaseHTTPRequestHandler):
         err = ''
         upstream_status = 0
         try:
-            conn.request('POST', prefix + '/v1/chat/completions', body=send_body, headers=hdr)
+            conn.request('POST', forward_path(prefix), body=send_body, headers=hdr)
             resp = conn.getresponse()
             upstream_status = resp.status
 
