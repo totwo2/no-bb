@@ -151,7 +151,7 @@ def check():
     l0 = proxy_alive()
     print('[L0] 中间层进程(端口 %d): %s' % (PORT, '✅ 运行中' if l0 else '❌ 未运行'))
     if not l0:
-        issues.append('中间层未运行 -> 外接模型流量不会经过 No BB。启动: install.sh 或后台运行 src/rewrite_proxy.py')
+        issues.append('中间层未运行 -> 外接模型流量不会经过 No BB。启动: 后台运行 python3 src/rewrite_proxy.py')
 
     # L1 外接模型接入
     n_proxy = n_total = 0

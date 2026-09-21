@@ -54,43 +54,55 @@ def paired(rows_by_pid, label, unit):
         detail.append((p, rb, rc, (rc / rb - 1) if rb else 0,
                        sum(1 for r in b if r['ok']), len(b),
                        sum(1 for r in c if r['ok']), len(c), wb, wc))
+    # 混池口径（按模型跨题混合，不配对）：README §4.3 自陈 -16.5% 即此口径
+    all_base = [r['rlen'] for p in pids for r in rows_by_pid['C0_base'][p] if r['rlen'] > 0]
+    all_weak = [r['rlen'] for p in pids for r in rows_by_pid['C1_weak'][p] if r['rlen'] > 0]
+    pooled = round((med(all_weak) / med(all_base) - 1) * 100, 1) if all_base and med(all_base) > 0 else 0.0
     return dict(label=label, unit=unit, n_pairs=len(pids),
                 ratio_median=round(med(ratios) * 100, 1),
                 ratio_mean=round(mean(ratios) * 100, 1),
                 wall_median=round(med(walls) * 100, 1),
+                pooled_median=pooled,
                 ok_base=ok_b, n_base=n_b, ok_mid=ok_c, n_mid=n_c,
                 detail=detail)
+
+
+def aggregate_long_file(fp, report):
+    """单个 bench_long_*_rejudged.json → 按模型产出长链题集的配对 + 混池口径。"""
+    d = json.load(open(fp, encoding='utf-8'))
+    stamp = os.path.basename(fp).replace('bench_long_', '').replace('_rejudged.json', '')
+    by = defaultdict(lambda: defaultdict(list))
+    zero = defaultdict(int)
+    tot = defaultdict(int)
+    for x in d:
+        if x.get('pid') == 'ALL':
+            continue
+        for r in x['rows']:
+            by[(x['model'], x['suffix'])][x['pid']].append(r)
+            tot[(x['model'], x['suffix'])] += 1
+            if r['rlen'] == 0:
+                zero[(x['model'], x['suffix'])] += 1
+    for m in sorted({k[0] for k in by}):
+        zp = max(zero[(m, 'C0_base')] / max(tot[(m, 'C0_base')], 1),
+                 zero[(m, 'C1_weak')] / max(tot[(m, 'C1_weak')], 1))
+        rows_by_pid = {'C0_base': {}, 'C1_weak': {}}
+        for s in ('C0_base', 'C1_weak'):
+            for p, rs in by[(m, s)].items():
+                rows_by_pid[s][p] = rs
+        r = paired(rows_by_pid, '%s · 长链高耗题（数据集 %s）' % (m, stamp), '字符')
+        r['rlen_zero_pct'] = round(zp * 100, 1)
+        r['usable'] = zp <= 0.10
+        report.append(r)
 
 
 def main():
     report = []
 
     # ---------- A. 长链题集（外部模型，字符口径）----------
-    fps = [p for p in sorted(glob.glob(os.path.join(DATA, 'bench_long_*.json'))) if '_rejudged' in p]
-    if fps:
-        d = json.load(open(fps[-1], encoding='utf-8'))
-        by = defaultdict(lambda: defaultdict(list))
-        zero = defaultdict(int)
-        tot = defaultdict(int)
-        for x in d:
-            if x.get('pid') == 'ALL':
-                continue
-            for r in x['rows']:
-                by[(x['model'], x['suffix'])][x['pid']].append(r)
-                tot[(x['model'], x['suffix'])] += 1
-                if r['rlen'] == 0:
-                    zero[(x['model'], x['suffix'])] += 1
-        for m in sorted({k[0] for k in by}):
-            zp = max(zero[(m, 'C0_base')] / max(tot[(m, 'C0_base')], 1),
-                     zero[(m, 'C1_weak')] / max(tot[(m, 'C1_weak')], 1))
-            rows_by_pid = {'C0_base': {}, 'C1_weak': {}}
-            for s in ('C0_base', 'C1_weak'):
-                for p, rs in by[(m, s)].items():
-                    rows_by_pid[s][p] = rs
-            r = paired(rows_by_pid, '%s · 长链高耗题 5 题×3 次' % m, '字符')
-            r['rlen_zero_pct'] = round(zp * 100, 1)
-            r['usable'] = zp <= 0.10
-            report.append(r)
+    # 遍历 results/ 下全部 bench_long_*_rejudged.json（默认覆盖 095010/100715 等全部数据集）
+    fps = sorted(p for p in glob.glob(os.path.join(DATA, 'bench_long_*.json')) if '_rejudged' in p)
+    for fp in fps:
+        aggregate_long_file(fp, report)
 
     # ---------- B. 标准推理题集（外部模型，字符口径）----------
     fps = sorted(glob.glob(os.path.join(DATA, 'bench_high_*.json')))
@@ -138,6 +150,8 @@ def main():
         if r['usable']:
             print('  思考量压缩：中位 %+.1f%%   均值 %+.1f%%   （%s 口径，%d 组配对）'
                   % (r['ratio_median'], r['ratio_mean'], r['unit'], r['n_pairs']))
+            if 'pooled_median' in r:
+                print('  混池口径（不配对）：%+.1f%%' % r['pooled_median'])
             if r.get('abs_base'):
                 print('  绝对值：%g → %g %s' % (r['abs_base'], r['abs_mid'], r['unit']))
         print('  正确率：%d/%d → %d/%d' % (r['ok_base'], r['n_base'], r['ok_mid'], r['n_mid']))

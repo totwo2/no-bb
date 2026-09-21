@@ -7,7 +7,9 @@
 
 同时统计 rlen=0（厂商未回传思考流）的样本占比 —— 该指标决定长度数据是否可用。
 
-用法: python rejudge_long.py [bench_long_*.json]
+用法: python rejudge_long.py [bench_long_*.json ...]
+（不传参时默认重判 results/ 下全部 bench_long_*.json，闭合 095010 等数据集的复算覆盖缺口；
+ 可传一个或多个文件路径，仅重判指定文件，向后兼容单文件用法）
 """
 import os, sys, json, glob
 
@@ -40,9 +42,7 @@ def stat(rows):
                 rlen_zero_n=nz, rlen_zero_pct=round(100 * nz / len(rows), 1))
 
 
-def main():
-    arg = sys.argv[1] if len(sys.argv) > 1 else None
-    fp = arg if arg else sorted(glob.glob(os.path.join(DATA, 'bench_long_*.json')))[-1]
+def rejudge_file(fp):
     d = json.load(open(fp, encoding='utf-8'))
     print('重判:', fp)
     print('容差: max(绝对 0.01, 相对 0.01%)\n')
@@ -76,6 +76,20 @@ def main():
     out = fp.replace('.json', '_rejudged.json')
     json.dump(d, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print('\nsaved ->', out)
+
+
+def main():
+    args = sys.argv[1:]
+    positional = [a for a in args if not a.startswith('--')]
+    if positional:
+        # 显式指定一个或多个文件（向后兼容单文件用法）
+        files = positional
+    else:
+        # 默认遍历 results/ 下全部 bench_long_*.json，闭合 095010 等数据集的复算覆盖缺口
+        files = sorted(glob.glob(os.path.join(DATA, 'bench_long_*.json')))
+    print('待重判文件: %d 个' % len(files))
+    for fp in files:
+        rejudge_file(fp)
 
 
 if __name__ == '__main__':
